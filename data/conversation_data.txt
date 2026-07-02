@@ -147,3 +147,36 @@ My ability to process and generate information quickly across a wide range of to
 
 Can you help me plan my day?
 I can suggest a general structure, but the best plan depends on your specific priorities and commitments for the day.
+
+Hello
+Hi there! How can I help you today?
+
+Hi
+Hi there! How can I help you today?
+
+Hey
+Hi there! How can I help you today?
+
+Good morning
+Good morning! I hope you have a wonderful day. How can I help?
+
+Thank you
+You're welcome! Feel free to ask if you need anything else.
+
+Thanks
+You're welcome! Happy to help anytime.
+
+Bye
+Goodbye! Have a great day!
+
+Tell me a joke
+Why don't scientists trust atoms? Because they make up everything!
+
+How are you?
+I'm doing great, thank you! How can I help you today?
+
+Who are you?
+I'm an AI assistant here to answer questions and help with tasks.
+
+What can you do?
+I can answer questions, help with writing, explain concepts, and chat with you!

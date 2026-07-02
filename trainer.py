@@ -3,6 +3,7 @@
 负责模型的训练、验证和评估
 """
 
+import random
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -27,6 +28,9 @@ class LLMTrainer:
         self.learning_rate = Config.LEARNING_RATE
         self.num_epochs = Config.NUM_EPOCHS
         self.warmup_steps = Config.WARMUP_STEPS
+        self.train_ratio = Config.TRAIN_RATIO
+        self.val_ratio = Config.VAL_RATIO
+        self.vocab_save_path = Config.VOCAB_SAVE_PATH
         
         # 优化器和损失函数
         self.optimizer = None
@@ -61,15 +65,18 @@ class LLMTrainer:
         return dataloader
     
     def split_data(self, texts):
-        """分割数据集"""
+        """分割数据集（先打乱，避免验证/测试集全是同一类数据）"""
+        texts = list(texts)
+        random.Random(42).shuffle(texts)
+
         total_size = len(texts)
-        train_size = int(total_size * Config.TRAIN_RATIO)
-        val_size = int(total_size * Config.VAL_RATIO)
-        
+        train_size = int(total_size * self.train_ratio)
+        val_size = int(total_size * self.val_ratio)
+
         train_texts = texts[:train_size]
         val_texts = texts[train_size:train_size + val_size]
         test_texts = texts[train_size + val_size:]
-        
+
         return train_texts, val_texts, test_texts
     
     def get_learning_rate(self, step):
@@ -182,7 +189,7 @@ class LLMTrainer:
         
         # 准备数据加载器（在模型创建之后）
         train_loader = self.prepare_data_loader(train_texts)
-        val_loader = self.prepare_data_loader(val_texts)
+        val_loader = self.prepare_data_loader(val_texts) if val_texts else None
         
         # 初始化优化器
         self.optimizer = torch.optim.AdamW(
@@ -192,38 +199,41 @@ class LLMTrainer:
         )
         
         # 训练循环
-        best_val_loss = float('inf')
-        
+        best_loss = float('inf')
+
         for epoch in range(self.num_epochs):
             print(f"\nEpoch {epoch + 1}/{self.num_epochs}")
-            
+
             # 训练
             start_time = time.time()
             train_loss, train_ppl = self.train_epoch(train_loader)
             train_time = time.time() - start_time
-            
-            # 验证
-            val_loss, val_ppl = self.validate(val_loader)
-            
+
             # 记录历史
             self.train_losses.append(train_loss)
-            self.val_losses.append(val_loss)
             self.train_perplexities.append(train_ppl)
-            self.val_perplexities.append(val_ppl)
-            
-            # 打印结果
             print(f"训练损失: {train_loss:.4f}, 训练困惑度: {train_ppl:.2f}")
-            print(f"验证损失: {val_loss:.4f}, 验证困惑度: {val_ppl:.2f}")
+
+            # 验证（验证集为空时按训练损失保存）
+            if val_loader is not None:
+                val_loss, val_ppl = self.validate(val_loader)
+                self.val_losses.append(val_loss)
+                self.val_perplexities.append(val_ppl)
+                print(f"验证损失: {val_loss:.4f}, 验证困惑度: {val_ppl:.2f}")
+                current_loss = val_loss
+            else:
+                current_loss = train_loss
+
             print(f"训练时间: {train_time:.2f}秒")
-            
+
             # 保存最佳模型
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
+            if current_loss < best_loss:
+                best_loss = current_loss
                 if save_path:
                     # 确保目录存在
                     os.makedirs(os.path.dirname(save_path), exist_ok=True)
                     self.model.save_model(save_path)
-                    self.data_preprocessor.save_vocab(Config.VOCAB_SAVE_PATH)
+                    self.data_preprocessor.save_vocab(self.vocab_save_path)
                     print(f"保存最佳模型到: {save_path}")
         
         print("\n训练完成!")

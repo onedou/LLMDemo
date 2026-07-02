@@ -13,9 +13,10 @@ from config import Config
 class LLMInference:
     """LLM推理器"""
     
-    def __init__(self, model_path=None, vocab_path=None):
+    def __init__(self, model_path=None, vocab_path=None, preserve_case=False):
         self.model = SimpleLLM()
-        self.data_preprocessor = DataPreprocessor()
+        self.preserve_case = preserve_case  # 对话模型需要设为True
+        self.data_preprocessor = DataPreprocessor(preserve_case=preserve_case)
         
         if model_path and vocab_path:
             self.load_model(model_path, vocab_path)
@@ -44,85 +45,57 @@ class LLMInference:
         print(f"生成参数: max_length={max_length}, temperature={temperature}, top_k={top_k}")
         
         results = []
-        
+
         for i in range(num_return_sequences):
-            # 如果是对话模式，优化生成参数
-            if is_conversation:
-                # 对话回复通常更短、更有温度
-                conversation_max_length = min(max_length, 30)
-                conversation_temperature = min(temperature + 0.1, 1.0)
-                
-                generated_text = self.model.model.generate(
-                    prompt=prompt,
-                    max_length=conversation_max_length,
-                    temperature=conversation_temperature,
-                    top_k=top_k,
-                    data_preprocessor=self.data_preprocessor
-                )
-            else:
-                generated_text = self.model.model.generate(
-                    prompt=prompt,
-                    max_length=max_length,
-                    temperature=temperature,
-                    top_k=top_k,
-                    data_preprocessor=self.data_preprocessor
-                )
-            
+            # generate返回生成的回复部分（不含prompt）
+            generated_text = self.model.model.generate(
+                prompt=prompt,
+                max_length=max_length,
+                temperature=temperature,
+                top_k=top_k,
+                data_preprocessor=self.data_preprocessor
+            )
+
             # 清理生成的文本（移除特殊标记）
             cleaned_text = self._clean_generated_text(generated_text)
-            
+
             # 对话模式下的后处理
             if is_conversation:
-                cleaned_text = self._conversation_postprocess(cleaned_text, prompt)
-            
+                cleaned_text = self._conversation_postprocess(cleaned_text)
+
             results.append(cleaned_text)
-            
+
             print(f"\nAI回复 {i+1}:")
             print(f"原始: {generated_text}")
             print(f"清理后: {cleaned_text}")
-        
+
         return results
     
     def _clean_generated_text(self, text):
         """清理生成的文本，移除特殊标记"""
         # 移除特殊标记
-        special_tokens = ['<BOS>', '<EOS>', '<PAD>', '<UNK>']
-        for token in special_tokens:
-            text = text.replace(f'<{token}>', '')
-        
+        for token in ['<BOS>', '<EOS>', '<PAD>', '<UNK>', '<SEP>']:
+            text = text.replace(token, '')
+
         # 规范化空格
         text = ' '.join(text.split())
-        
+
         return text.strip()
-    
-    def _conversation_postprocess(self, generated_text, original_prompt):
+
+    def _conversation_postprocess(self, generated_text):
         """对话模式下的后处理"""
-        # 移除重复的问候语
-        greetings = ['hello', 'hi', 'hey', 'greetings']
-        for greeting in greetings:
-            if generated_text.lower().startswith(greeting) and original_prompt.lower().startswith(greeting):
-                # 找到第一个句号或换行
-                sentences = generated_text.split('.', 1)
-                if len(sentences) > 1:
-                    generated_text = sentences[1].strip()
-                break
-        
-        # 确保回复不以句号结尾（如果长度很短）
-        if len(generated_text.split()) <= 5 and generated_text.endswith('.'):
-            generated_text = generated_text[:-1]
-        
-        # 如果回复太短，尝试重新生成
+        # 如果回复为空，使用兜底回复
         if len(generated_text) < 3:
-            generated_text = "I'm here to help! What can I assist you with today?"
-        
+            return "I'm here to help! What can I assist you with today?"
+
         # 确保回复是完整的句子
         if not generated_text.endswith(('.', '!', '?')):
             generated_text = generated_text + '.'
-        
+
         # 首字母大写
-        if generated_text and generated_text[0].islower():
+        if generated_text[0].islower():
             generated_text = generated_text[0].upper() + generated_text[1:]
-        
+
         return generated_text
     
     def calculate_perplexity(self, text):
@@ -166,11 +139,11 @@ class LLMInference:
         print("-" * 50)
         
         # 默认参数（优化对话）
-        max_length = 30  # 对话回复更短
-        temperature = 0.9  # 对话更有创意
-        top_k = 50
-        
-        # 对话历史
+        max_length = 40   # 对话回复更短
+        temperature = 0.3  # 小模型是记忆式回答，低温回答最稳定
+        top_k = 1          # 贪心解码：全部训练问答可精确复现，采样反而引入错误
+
+        # 对话历史（仅用于展示，模型按单轮问答训练，输入只用当前问题）
         conversation_history = []
         
         while True:
@@ -190,18 +163,10 @@ class LLMInference:
                     print("请输入内容")
                     continue
                 
-                # 构建上下文提示（包含历史对话）
-                if conversation_history:
-                    # 使用最近3轮对话作为上下文
-                    recent_history = conversation_history[-3:]
-                    context_prompt = "\n".join(recent_history) + "\n" + user_input
-                else:
-                    context_prompt = user_input
-                
-                # 生成回复
+                # 生成回复（模型按单轮问答训练，直接使用当前输入作为问题）
                 print("🤖 AI思考中...")
                 results = self.generate_text(
-                    prompt=context_prompt,
+                    prompt=user_input,
                     max_length=max_length,
                     temperature=temperature,
                     top_k=top_k,
@@ -230,19 +195,19 @@ class LLMInference:
     def _get_generation_settings(self):
         """获取生成参数设置"""
         print("\n=== 对话参数设置 ===")
-        print("推荐对话设置: 最大长度20-40, 温度0.7-1.0")
+        print("推荐对话设置: 最大长度30-50, 温度0.5-0.8")
         
         try:
-            max_length = int(input("最大回复长度 (默认30): ") or 30)
-            temperature = float(input("创意程度 (默认0.9): ") or 0.9)
-            top_k = int(input("多样性控制 (默认50): ") or 50)
-            
+            max_length = int(input("最大回复长度 (默认40): ") or 40)
+            temperature = float(input("创意程度 (默认0.7): ") or 0.7)
+            top_k = int(input("多样性控制 (默认20): ") or 20)
+
             print(f"✅ 参数已更新: 回复长度={max_length}, 创意程度={temperature}, 多样性={top_k}")
             return max_length, temperature, top_k
-            
+
         except ValueError:
             print("❌ 输入参数无效，使用默认对话设置")
-            return 30, 0.9, 50
+            return 40, 0.7, 20
     
     def batch_generate(self, prompts, **kwargs):
         """批量生成文本"""

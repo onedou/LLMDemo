@@ -13,6 +13,18 @@ class Config:
     D_FF = 2048
     DROPOUT = 0.1
     MAX_SEQ_LEN = 512
+    # 训练样本的填充长度（演示数据都是短句，512会浪费大量计算在<PAD>上）
+    TRAIN_MAX_SEQ_LEN = 64
+
+    # 对话模型参数（数据量小，用小模型避免过拟合且加快训练）
+    # dropout=0：演示场景目标是精确记住问答对，正则化反而妨碍记忆
+    CONV_MODEL_CONFIG = {
+        'd_model': 128,
+        'n_head': 4,
+        'num_layers': 2,
+        'd_ff': 512,
+        'dropout': 0.0
+    }
     
     # 训练参数
     BATCH_SIZE = 32

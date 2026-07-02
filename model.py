@@ -24,13 +24,14 @@ class PositionalEncoding(nn.Module):
         
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
-        
-        self.register_buffer('pe', pe)
-    
+        pe = pe.unsqueeze(0)  # (1, max_len, d_model)，与batch_first输入对齐
+
+        # persistent=False：位置编码是确定性计算，不存入state_dict，避免max_len变化时加载失败
+        self.register_buffer('pe', pe, persistent=False)
+
     def forward(self, x):
-        """前向传播"""
-        return x + self.pe[:x.size(0), :]
+        """前向传播，x形状为(batch, seq_len, d_model)"""
+        return x + self.pe[:, :x.size(1), :]
 
 
 class TransformerLM(nn.Module):
@@ -114,53 +115,57 @@ class TransformerLM(nn.Module):
         
         return logits
     
-    def generate(self, prompt, max_length=50, temperature=1.0, top_k=50, 
+    def generate(self, prompt, max_length=50, temperature=1.0, top_k=50,
                 data_preprocessor=None):
-        """文本生成方法"""
+        """文本生成方法，返回生成的回复（不含prompt部分）"""
         self.eval()
-        
+
         if data_preprocessor is None:
             raise ValueError("需要提供数据预处理器")
-        
-        # 将提示转换为ID
-        input_ids = data_preprocessor.text_to_ids(prompt)
-        input_ids = torch.tensor(input_ids).unsqueeze(0).to(next(self.parameters()).device)
-        
-        generated_ids = input_ids.tolist()[0]
-        
+
+        device = next(self.parameters()).device
+
+        # 编码提示：<BOS> prompt [<SEP>]，不填充、不加EOS
+        prompt_ids = data_preprocessor.encode_prompt(prompt)
+        generated_ids = list(prompt_ids)
+        prompt_len = len(generated_ids)
+
+        # 采样时屏蔽特殊token（PAD/UNK/BOS/SEP），只允许EOS作为停止信号
+        banned_ids = [
+            data_preprocessor.special_tokens[t]
+            for t in ('<PAD>', '<UNK>', '<BOS>', '<SEP>')
+            if t in data_preprocessor.special_tokens
+        ]
+
         with torch.no_grad():
             for _ in range(max_length):
-                # 前向传播
+                input_ids = torch.tensor(
+                    [generated_ids[-Config.MAX_SEQ_LEN:]], device=device
+                )
                 outputs = self(input_ids)
-                
+
                 # 获取最后一个token的logits
-                next_token_logits = outputs[0, -1, :] / temperature
-                
+                next_token_logits = outputs[0, -1, :] / max(temperature, 1e-5)
+                next_token_logits[banned_ids] = float('-inf')
+
                 # Top-k过滤
                 if top_k > 0:
+                    top_k = min(top_k, next_token_logits.size(-1))
                     indices_to_remove = next_token_logits < torch.topk(next_token_logits, top_k)[0][-1]
                     next_token_logits[indices_to_remove] = float('-inf')
-                
-                # 应用softmax获取概率
+
+                # 应用softmax获取概率并采样
                 probs = F.softmax(next_token_logits, dim=-1)
-                
-                # 从分布中采样
                 next_token_id = torch.multinomial(probs, num_samples=1).item()
-                
+
                 # 如果生成了EOS标记，停止生成
                 if next_token_id == data_preprocessor.special_tokens['<EOS>']:
                     break
-                
-                # 添加新token到序列
+
                 generated_ids.append(next_token_id)
-                
-                # 更新输入
-                input_ids = torch.tensor([generated_ids[-Config.MAX_SEQ_LEN:]]).to(next(self.parameters()).device)
-        
-        # 将ID转换回文本
-        generated_text = data_preprocessor.ids_to_text(generated_ids)
-        
-        return generated_text
+
+        # 只解码新生成的部分（回复）
+        return data_preprocessor.ids_to_text(generated_ids[prompt_len:])
 
 
 class SimpleLLM:
@@ -217,7 +222,10 @@ class SimpleLLM:
         
         # 重新创建模型
         self.model = TransformerLM(**self.config)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        # 旧版checkpoint把位置编码buffer存进了state_dict，现已改为动态计算，跳过该键
+        state_dict = {k: v for k, v in checkpoint['model_state_dict'].items()
+                      if k != 'pos_encoding.pe'}
+        self.model.load_state_dict(state_dict)
         self.model.to(self.device)
         
         # 加载词汇表

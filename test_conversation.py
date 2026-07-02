@@ -17,14 +17,20 @@ def test_basic_conversation():
     model_path = 'models/conversation_llm_model.pth'
     vocab_path = 'models/conversation_vocab.pkl'
     
-    # 如果对话模型不存在，使用默认模型
-    if not os.path.exists(model_path):
+    # 如果对话模型或词汇表不存在，使用默认模型
+    if not os.path.exists(model_path) or not os.path.exists(vocab_path):
         model_path = 'models/llm_demo_model.pth'
         vocab_path = 'models/vocab.pkl'
-        print("⚠️  对话模型不存在，使用默认模型")
+        preserve_case = False
+        print("⚠️  对话模型或词汇表不存在，使用默认模型")
+    else:
+        preserve_case = True
     
     # 加载模型
-    inference = LLMInference(model_path, vocab_path)
+    print(f"加载模型: {model_path}")
+    print(f"加载词汇表: {vocab_path}")
+    print(f"保留大小写: {preserve_case}")
+    inference = LLMInference(model_path, vocab_path, preserve_case=preserve_case)
     
     # 测试对话
     test_dialogues = [
@@ -47,9 +53,9 @@ def test_basic_conversation():
         try:
             results = inference.generate_text(
                 prompt=prompt,
-                max_length=30,
-                temperature=0.9,
-                top_k=50,
+                max_length=40,
+                temperature=0.3,
+                top_k=1,
                 is_conversation=True
             )
             
@@ -71,14 +77,20 @@ def interactive_demo():
     model_path = 'models/conversation_llm_model.pth'
     vocab_path = 'models/conversation_vocab.pkl'
     
-    # 如果对话模型不存在，使用默认模型
-    if not os.path.exists(model_path):
+    # 如果对话模型或词汇表不存在，使用默认模型
+    if not os.path.exists(model_path) or not os.path.exists(vocab_path):
         model_path = 'models/llm_demo_model.pth'
         vocab_path = 'models/vocab.pkl'
-        print("⚠️  对话模型不存在，使用默认模型")
+        preserve_case = False
+        print("⚠️  对话模型或词汇表不存在，使用默认模型")
+    else:
+        preserve_case = True
     
     # 加载模型
-    inference = LLMInference(model_path, vocab_path)
+    print(f"加载模型: {model_path}")
+    print(f"加载词汇表: {vocab_path}")
+    print(f"保留大小写: {preserve_case}")
+    inference = LLMInference(model_path, vocab_path, preserve_case=preserve_case)
     
     # 开始交互
     inference.interactive_generation()
