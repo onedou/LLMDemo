@@ -4,7 +4,10 @@ LLM演示程序配置
 
 class Config:
     """模型配置参数"""
-    
+
+    # 机器人名字（改名后需同步更新data/conversation_data.txt中的自我介绍并重新训练）
+    BOT_NAME = "Nova"
+
     # 模型参数
     VOCAB_SIZE = 10000
     D_MODEL = 512

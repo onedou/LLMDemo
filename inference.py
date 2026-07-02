@@ -3,8 +3,10 @@
 负责加载训练好的模型并进行文本生成
 """
 
+import re
 import torch
 import numpy as np
+from datetime import datetime
 from model import SimpleLLM
 from data_preprocessor import DataPreprocessor
 from config import Config
@@ -43,7 +45,14 @@ class LLMInference:
         
         print(f"用户输入: {prompt}")
         print(f"生成参数: max_length={max_length}, temperature={temperature}, top_k={top_k}")
-        
+
+        # 对话模式下先检查内置技能（如实时时间），命中则无需模型生成
+        if is_conversation:
+            builtin = self._builtin_response(prompt)
+            if builtin:
+                print(f"命中内置技能: {builtin}")
+                return [builtin] * num_return_sequences
+
         results = []
 
         for i in range(num_return_sequences):
@@ -71,6 +80,26 @@ class LLMInference:
 
         return results
     
+    def _builtin_response(self, prompt):
+        """内置规则技能：语言模型无法感知实时信息，时间/日期类问题直接读系统时间
+
+        命中返回回答字符串，未命中返回None（交给模型生成）
+        """
+        p = prompt.lower()
+        now = datetime.now()
+
+        # 时间类：What time is it? / what's time it is now? / 现在几点
+        if re.search(r'几点|现在时间', prompt) or (
+                re.search(r'\btime\b', p) and re.search(r'what|now|current|tell|know', p)):
+            return now.strftime("It's %H:%M right now.")
+
+        # 日期类：What's the date? / What day is it? / 今天几号
+        if re.search(r'几号|日期|星期几', prompt) or (
+                re.search(r'\b(date|day)\b', p) and re.search(r'what|now|current|today|tell', p)):
+            return now.strftime("Today is %A, %B %d, %Y.")
+
+        return None
+
     def _clean_generated_text(self, text):
         """清理生成的文本，移除特殊标记"""
         # 移除特殊标记
@@ -131,8 +160,8 @@ class LLMInference:
     
     def interactive_generation(self):
         """交互式对话生成"""
-        print("\n=== AI对话助手 ===")
-        print("现在您可以与AI进行自然对话了！")
+        print(f"\n=== {Config.BOT_NAME} 对话助手 ===")
+        print(f"现在您可以与{Config.BOT_NAME}进行自然对话了！")
         print("输入 'quit' 退出对话")
         print("输入 'settings' 调整生成参数")
         print("输入 'clear' 清空对话历史")
@@ -164,7 +193,7 @@ class LLMInference:
                     continue
                 
                 # 生成回复（模型按单轮问答训练，直接使用当前输入作为问题）
-                print("🤖 AI思考中...")
+                print(f"🤖 {Config.BOT_NAME}思考中...")
                 results = self.generate_text(
                     prompt=user_input,
                     max_length=max_length,
@@ -174,13 +203,13 @@ class LLMInference:
                 )
                 
                 ai_response = results[0] if results else "I'm here to help!"
-                
+
                 # 显示AI回复
-                print(f"🤖 AI: {ai_response}")
-                
+                print(f"🤖 {Config.BOT_NAME}: {ai_response}")
+
                 # 保存到对话历史
                 conversation_history.append(f"用户: {user_input}")
-                conversation_history.append(f"AI: {ai_response}")
+                conversation_history.append(f"{Config.BOT_NAME}: {ai_response}")
                 
                 # 限制历史长度
                 if len(conversation_history) > 10:

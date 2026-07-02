@@ -53,9 +53,20 @@ def train_conversation_model():
     # 加载数据
     pairs = load_conversation_pairs()
     plain_texts = load_plain_texts()
-    items = plain_texts + pairs
 
-    print(f"加载了 {len(pairs)} 组问答对，{len(plain_texts)} 条通用文本")
+    # 数据增强：问题的无标点/全小写变体也训练一遍，容忍用户随意的输入习惯
+    seen = {q for q, _ in pairs}
+    augmented = []
+    for q, a in pairs:
+        stripped = q.rstrip(' ?!.')
+        for variant in (stripped, q.lower(), stripped.lower()):
+            if variant and variant not in seen:
+                seen.add(variant)
+                augmented.append((variant, a))
+
+    items = plain_texts + pairs + augmented
+
+    print(f"加载了 {len(pairs)} 组问答对（增强后 {len(pairs) + len(augmented)} 组），{len(plain_texts)} 条通用文本")
     if not items:
         print("❌ 没有找到训练数据")
         return
