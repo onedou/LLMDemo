@@ -22,6 +22,9 @@ LLMDemo/
 ├── trainer.py             # 训练模块
 ├── inference.py           # 推理模块
 ├── interface.py           # 交互界面模块
+├── web_server.py          # Web聊天服务器
+├── static/                # Web前端页面
+│   └── index.html         # 聊天页面
 ├── data/                  # 数据目录
 │   └── sample_data.txt    # 示例数据集
 ├── models/                # 模型保存目录
@@ -60,6 +63,24 @@ python interface.py infer --prompt "人工智能是" --max_length 50
 
 # 交互式生成
 python interface.py interactive
+```
+
+### 5. Web界面
+
+启动Web聊天服务器，通过浏览器与Nova对话（支持中文和英文输入）：
+
+```bash
+python web_server.py
+```
+
+启动后在浏览器中访问 [http://127.0.0.1:8000](http://127.0.0.1:8000) 即可开始聊天。
+
+也可以直接调用聊天接口：
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "你好"}'
 ```
 
 ## 详细使用说明

@@ -70,7 +70,7 @@ class LLMInference:
 
             # 对话模式下的后处理
             if is_conversation:
-                cleaned_text = self._conversation_postprocess(cleaned_text)
+                cleaned_text = self._conversation_postprocess(cleaned_text, prompt)
 
             results.append(cleaned_text)
 
@@ -87,18 +87,64 @@ class LLMInference:
         """
         p = prompt.lower()
         now = datetime.now()
+        # 提问包含汉字时用中文回答
+        is_chinese = bool(re.search(r'[一-鿿]', prompt))
 
         # 时间类：What time is it? / what's time it is now? / 现在几点
         if re.search(r'几点|现在时间', prompt) or (
                 re.search(r'\btime\b', p) and re.search(r'what|now|current|tell|know', p)):
+            if is_chinese:
+                return now.strftime("现在是 %H:%M。")
             return now.strftime("It's %H:%M right now.")
 
         # 日期类：What's the date? / What day is it? / 今天几号
         if re.search(r'几号|日期|星期几', prompt) or (
                 re.search(r'\b(date|day)\b', p) and re.search(r'what|now|current|today|tell', p)):
+            if is_chinese:
+                weekday = '一二三四五六日'[now.weekday()]
+                return f"今天是{now.year}年{now.month}月{now.day}日，星期{weekday}。"
             return now.strftime("Today is %A, %B %d, %Y.")
 
+        # 算术类：1+1等于几 / What is 3*4 / 12除以4
+        arithmetic = self._arithmetic_response(prompt, is_chinese)
+        if arithmetic:
+            return arithmetic
+
         return None
+
+    def _arithmetic_response(self, prompt, is_chinese):
+        """简单算术技能：提取"数字 运算符 数字"并计算，支持中英文表达
+
+        命中返回回答字符串，未命中返回None
+        """
+        match = re.search(
+            r'(\d+(?:\.\d+)?)\s*(加|减|乘以|乘|除以|除|[+\-*xX×/÷])\s*(\d+(?:\.\d+)?)',
+            prompt)
+        if not match:
+            return None
+
+        a, op, b = float(match.group(1)), match.group(2), float(match.group(3))
+
+        # 减号易与连字符/日期（如2026-07-02）混淆，仅在有明确算术意图时才计算
+        if op == '-' and not re.search(
+                r"等于|是多少|算|计算|减|what is|what's|calculate|how much|=", prompt.lower()):
+            return None
+
+        if op in ('加', '+'):
+            result = a + b
+        elif op in ('减', '-'):
+            result = a - b
+        elif op in ('乘', '乘以', '*', 'x', 'X', '×'):
+            result = a * b
+        else:  # 除 / 除以 / '/' / '÷'
+            if b == 0:
+                return "0不能作为除数哦。" if is_chinese else "Sorry, I can't divide by zero."
+            result = a / b
+
+        # 整数结果不显示小数点，小数结果保留4位
+        result_str = str(int(result)) if result == int(result) else str(round(result, 4))
+        expr = f"{match.group(1)} {op} {match.group(3)}"
+        return f"{expr} = {result_str}。" if is_chinese else f"{expr} = {result_str}."
 
     def _clean_generated_text(self, text):
         """清理生成的文本，移除特殊标记"""
@@ -111,17 +157,28 @@ class LLMInference:
 
         return text.strip()
 
-    def _conversation_postprocess(self, generated_text):
-        """对话模式下的后处理"""
-        # 如果回复为空，使用兜底回复
-        if len(generated_text) < 3:
+    def _conversation_postprocess(self, generated_text, prompt=''):
+        """对话模式下的后处理，按提问/回复语言分别处理中英文"""
+        is_chinese_prompt = bool(re.search(r'[一-鿿]', prompt))
+
+        # 如果回复为空，使用兜底回复（中文提问用中文兜底）
+        if len(generated_text) < 2:
+            if is_chinese_prompt:
+                return "我在呢！有什么可以帮你的吗？"
             return "I'm here to help! What can I assist you with today?"
 
-        # 确保回复是完整的句子
+        if re.search(r'[一-鿿]', generated_text):
+            # 中文回复：把训练时归一化的英文标点还原为中文标点，不做首字母大写
+            for en_punct, zh_punct in ((',', '，'), ('!', '！'), ('?', '？'),
+                                       (';', '；'), ('.', '。')):
+                generated_text = generated_text.replace(en_punct, zh_punct)
+            if not generated_text.endswith(('。', '！', '？')):
+                generated_text = generated_text + '。'
+            return generated_text
+
+        # 英文回复：确保以句号结尾且首字母大写
         if not generated_text.endswith(('.', '!', '?')):
             generated_text = generated_text + '.'
-
-        # 首字母大写
         if generated_text[0].islower():
             generated_text = generated_text[0].upper() + generated_text[1:]
 

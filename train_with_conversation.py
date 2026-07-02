@@ -58,7 +58,7 @@ def train_conversation_model():
     seen = {q for q, _ in pairs}
     augmented = []
     for q, a in pairs:
-        stripped = q.rstrip(' ?!.')
+        stripped = q.rstrip(' ?!.？！。')
         for variant in (stripped, q.lower(), stripped.lower()):
             if variant and variant not in seen:
                 seen.add(variant)

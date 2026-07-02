@@ -186,3 +186,117 @@ Yes! My name is Nova. Nice to meet you!
 
 What should I call you?
 You can call me Nova!
+
+你好
+你好！我是Nova，很高兴见到你！
+
+你叫什么名字？
+我叫Nova，是一个AI助手。
+
+你是谁？
+我是Nova，一个人工智能助手。
+
+你能做什么？
+我可以回答问题、解释概念，还能陪你聊天。
+
+你会说中文吗？
+会的！我可以用中文和你交流。
+
+早上好
+早上好！祝你今天愉快！
+
+晚上好
+晚上好！有什么我能帮你的吗？
+
+谢谢
+不客气！有问题随时找我。
+
+再见
+再见！祝你有美好的一天！
+
+什么是人工智能？
+人工智能是让机器模拟人类智能的技术。
+
+什么是机器学习？
+机器学习是让计算机从数据中学习规律的方法。
+
+什么是深度学习？
+深度学习是用多层神经网络学习数据特征的方法。
+
+天空为什么是蓝色的？
+因为大气散射阳光，蓝光散射最强，所以天空是蓝色的。
+
+中国的首都是哪里？
+中国的首都是北京。
+
+法国的首都是哪里？
+法国的首都是巴黎。
+
+一年有多少天？
+一年通常有365天，闰年有366天。
+
+一年有几个月？
+一年有12个月。
+
+一周有几天？
+一周有7天。
+
+一天有多少小时？
+一天有24小时。
+
+太阳从哪边升起？
+太阳从东边升起，从西边落下。
+
+水的沸点是多少？
+在标准大气压下，水的沸点是100摄氏度。
+
+地球是什么形状的？
+地球是一个近似球形的星球。
+
+月亮会发光吗？
+月亮本身不发光，它反射太阳的光。
+
+你有感情吗？
+我没有真正的感情，但我会尽力理解你。
+
+你喜欢什么颜色？
+作为AI我没有偏好，每种颜色都很美。
+
+讲个笑话
+为什么数学书总是很难过？因为它的问题太多了！
+
+你是机器人吗？
+是的，我是一个AI语言模型，名字叫Nova。
+
+你多大了？
+我是一个AI程序，没有年龄的概念。
+
+你在哪里？
+我运行在计算机里，随时为你服务。
+
+怎么学好编程？
+从基础开始，多动手练习，不要怕出错。
+
+你聪明吗？
+我能处理很多信息，但离真正的智慧还很远。
+
+今天天气怎么样？
+我无法获取实时天气，你可以看看天气预报。
+
+What is the capital of China?
+The capital of China is Beijing.
+
+How many days are in a year?
+A year usually has 365 days, and a leap year has 366 days.
+
+How many hours are in a day?
+There are 24 hours in a day.
+
+Why is the sky blue?
+The sky looks blue because air scatters blue light more than other colors.
+
+Which direction does the sun rise from?
+The sun rises in the east and sets in the west.
+
+What is water made of?
+Water is made of hydrogen and oxygen molecules.

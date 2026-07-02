@@ -40,7 +40,18 @@ class DataPreprocessor:
             text = text.lower()
 
         # 保留字母、数字、基本标点和撇号（I'm / don't 等常见缩写）
-        text = re.sub(r"[^a-zA-Z0-9\s.,!?'\";:\-]", '', text)
+        # 中文标点归一化为对应英文标点，避免全角/半角标点占用两个不同的token
+        for zh_punct, en_punct in (('，', ','), ('。', '.'), ('！', '!'),
+                                   ('？', '?'), ('、', ','), ('；', ';'),
+                                   ('：', ':'), ('“', '"'), ('”', '"'),
+                                   ('‘', "'"), ('’', "'")):
+            text = text.replace(zh_punct, en_punct)
+
+        # 保留字母、数字、汉字、基本标点和撇号（I'm / don't 等常见缩写）
+        text = re.sub(r"[^a-zA-Z0-9一-鿿\s.,!?'\";:\-]", '', text)
+
+        # 中文没有空格分词：给每个汉字前后插入空格，使每个汉字成为独立token
+        text = re.sub(r'([一-鿿])', r' \1 ', text)
 
         # 标点作为独立token，避免"Hello,"和"Hello"成为两个不同的词
         text = re.sub(r'([.,!?;:"])', r' \1 ', text)
@@ -151,6 +162,10 @@ class DataPreprocessor:
         text = ' '.join(words)
         # 恢复标点与前一个词的粘连（分词时标点被拆成了独立token）
         text = re.sub(r"\s+([.,!?;:])", r'\1', text)
+        # 去除相邻汉字之间的空格（中文按字切分时插入的），恢复自然的中文文本
+        text = re.sub(r'([一-鿿])\s+(?=[一-鿿])', r'\1', text)
+        # 去除标点与后续汉字之间的空格（中文语境下标点后不留空格）
+        text = re.sub(r"([.,!?;:])\s+(?=[一-鿿])", r'\1', text)
         return text
 
     def save_vocab(self, filepath):
