@@ -1,0 +1,14 @@
+使用设备：mps
+分词器词表大小：16384，eot_id=0
+已启用AMP（autocast fp16）
+优化器分组：decay张量34个(33,816,576参数)，no-decay张量66个(54,272参数)
+模型参数量：33.87M
+每步token数：65,536 (batch16 x block512 x accum8)
+step      0 | loss 9.7723 | lr 1.33e-06 | 18303ms/step | 3,581 tok/s
+step     10 | loss 9.3499 | lr 1.47e-05 | 17008ms/step | 3,853 tok/s
+step     20 | loss 9.2346 | lr 2.80e-05 | 15238ms/step | 4,301 tok/s
+step     30 | loss 9.2078 | lr 4.13e-05 | 14921ms/step | 4,392 tok/s
+step     40 | loss 9.0691 | lr 5.47e-05 | 16373ms/step | 4,003 tok/s
+step     50 | loss 9.0818 | lr 6.80e-05 | 17240ms/step | 3,801 tok/s
+step     60 | loss 8.9712 | lr 8.13e-05 | 16132ms/step | 4,062 tok/s
+step     70 | loss 8.8977 | lr 9.47e-05 | 17057ms/step | 3,842 tok/s
