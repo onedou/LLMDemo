@@ -7,7 +7,12 @@ LLM演示程序主入口
 import os
 import sys
 import argparse
-from interface import CommandLineInterface, SimpleWebInterface, main as interface_main
+import os
+import sys
+# 使脚本可从任意目录直接运行（把项目根目录加入模块搜索路径）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from legacy.interface import CommandLineInterface, SimpleWebInterface, main as interface_main
 from config import Config
 
 
@@ -59,8 +64,8 @@ def demo_quick_start():
         
         if choice == '1':
             # 训练模型
-            from trainer import LLMTrainer
-            from data_preprocessor import DataPreprocessor
+            from legacy.trainer import LLMTrainer
+            from legacy.data_preprocessor import DataPreprocessor
             
             print("\n开始训练模型...")
             
@@ -80,7 +85,7 @@ def demo_quick_start():
             
         elif choice == '2':
             # 直接推理（需要先训练或加载预训练模型）
-            from inference import LLMInference
+            from legacy.inference import LLMInference
             
             if not os.path.exists(Config.MODEL_SAVE_PATH):
                 print("模型文件不存在，请先训练模型")

@@ -1,5 +1,5 @@
 """
-GPT-2续写生成脚本（演示/验收用）
+Nova基座模型续写生成脚本（演示/验收用，GPT-2风格结构）
 
 加载预训练检查点 + BPE分词器，从命令行prompt生成中文续写。
 
@@ -15,8 +15,13 @@ import os
 
 import torch
 
-from gpt2_model import GPT, GPTConfig
-from bpe_tokenizer import BPETokenizer
+import os
+import sys
+# 使脚本可从任意目录直接运行（把项目根目录加入模块搜索路径）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from nova.gpt2_model import GPT, GPTConfig
+from nova.bpe_tokenizer import BPETokenizer
 
 
 def pick_device(override=None):
@@ -60,7 +65,7 @@ def generate_once(model, tok, prompt, device, max_new_tokens=200,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="GPT-2中文续写生成")
+    parser = argparse.ArgumentParser(description="Nova基座模型中文续写生成")
     parser.add_argument("--ckpt", default="models/gpt2_pretrain/best.pt")
     parser.add_argument("--tokenizer-dir", default="models/bpe_tokenizer")
     parser.add_argument("--prompt", default=None, help="不提供则进入交互模式")

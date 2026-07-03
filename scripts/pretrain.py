@@ -1,5 +1,5 @@
 """
-GPT-2中文预训练脚本（nanoGPT风格，按本项目中文注释风格改写）
+Nova基座模型中文预训练脚本（GPT-2风格结构，nanoGPT式训练流程）
 
 功能：
   - 数据加载：np.memmap从train.bin/val.bin随机采样block_size长度窗口
@@ -25,8 +25,13 @@ from contextlib import nullcontext
 import numpy as np
 import torch
 
-from gpt2_model import GPT, GPTConfig, PRESETS
-from bpe_tokenizer import BPETokenizer
+import os
+import sys
+# 使脚本可从任意目录直接运行（把项目根目录加入模块搜索路径）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from nova.gpt2_model import GPT, GPTConfig, PRESETS
+from nova.bpe_tokenizer import BPETokenizer
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +317,7 @@ def _save_ckpt(path, model, optimizer, step, best_val, config):
 
 
 def build_argparser():
-    p = argparse.ArgumentParser(description="GPT-2中文预训练")
+    p = argparse.ArgumentParser(description="Nova基座模型中文预训练（GPT-2风格结构）")
     p.add_argument("--preset", default="gpt2-mini", choices=list(PRESETS.keys()))
     p.add_argument("--data-dir", default="data/pretrain")
     p.add_argument("--tokenizer-dir", default="models/bpe_tokenizer")

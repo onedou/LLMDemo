@@ -14,21 +14,28 @@
 
 ```
 LLMDemo/
-├── main.py                 # 主程序入口
-├── config.py              # 配置文件
-├── requirements.txt       # 依赖包列表
-├── data_preprocessor.py   # 数据预处理模块
-├── model.py               # 模型架构定义
-├── trainer.py             # 训练模块
-├── inference.py           # 推理模块
-├── interface.py           # 交互界面模块
-├── web_server.py          # Web聊天服务器
-├── static/                # Web前端页面
-│   └── index.html         # 聊天页面
-├── data/                  # 数据目录
-│   └── sample_data.txt    # 示例数据集
-├── models/                # 模型保存目录
-└── README.md              # 项目说明
+├── web_server.py          # Web聊天服务器（入口，自动选用Nova/旧模型）
+├── config.py              # 全局配置（BOT_NAME等，两代模型共用）
+├── CLAUDE.md              # AI开发会话的项目指南
+├── nova/                  # 新一代Nova模型核心（v0.3+，GPT-2风格结构）
+│   ├── gpt2_model.py      #   模型结构（GPTConfig/GPT/PRESETS）
+│   ├── bpe_tokenizer.py   #   Byte-Level BPE分词器（16384词表）
+│   └── chat_inference.py  #   对话推理（技能→检索→生成→后处理）
+├── legacy/                # 旧记忆式模型（v0.2，回退用）
+│   ├── model.py / trainer.py / inference.py / data_preprocessor.py
+│   ├── interface.py / main.py / train_with_conversation.py
+├── scripts/               # 训练与数据流水线
+│   ├── prepare_pretrain_data.py  # 下载/清洗中文维基语料
+│   ├── encode_corpus.py          # 语料编码为train.bin/val.bin
+│   ├── pretrain.py               # Nova基座预训练
+│   ├── finetune_chat.py          # 对话微调
+│   ├── mine_knowledge_qa.py      # 挖掘知识库（实体→定义句）
+│   └── generate_gpt2.py          # 基座续写测试
+├── tests/                 # 测试（python3 -m unittest tests.test_chinese_conversation）
+├── docs/                  # PRODUCT_PLAN.md / README_MIGRATE.md / Colab笔记本
+├── static/index.html      # Web前端页面
+├── data/                  # 对话语料、知识库TSV、预训练数据(gitignored)
+└── models/                # 模型产物（基座best.pt、对话chat.pt、分词器）
 ```
 
 ## 快速开始
@@ -42,27 +49,27 @@ pip install -r requirements.txt
 ### 2. 快速演示
 
 ```bash
-python main.py demo
+python legacy/main.py demo
 ```
 
 ### 3. 训练模型
 
 ```bash
 # 使用默认参数训练
-python main.py train
+python legacy/main.py train
 
 # 自定义训练参数
-python interface.py train --data data/sample_data.txt --epochs 10 --batch_size 32
+python legacy/interface.py train --data data/sample_data.txt --epochs 10 --batch_size 32
 ```
 
 ### 4. 使用模型生成文本
 
 ```bash
 # 单次生成
-python interface.py infer --prompt "人工智能是" --max_length 50
+python legacy/interface.py infer --prompt "人工智能是" --max_length 50
 
 # 交互式生成
-python interface.py interactive
+python legacy/interface.py interactive
 ```
 
 ### 5. Web界面

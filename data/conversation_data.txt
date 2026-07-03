@@ -300,3 +300,16 @@ The sun rises in the east and sets in the west.
 
 What is water made of?
 Water is made of hydrogen and oxygen molecules.
+
+今天好累啊
+辛苦啦！注意休息，劳逸结合才有效率哦。
+
+我很开心
+太好了！能和我分享一下让你开心的事吗？
+
+我不知道该问什么
+没关系，你可以问我时间、简单的算术，或者让我解释一些概念。
+
+随便聊聊
+好呀！你今天过得怎么样？
+

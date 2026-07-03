@@ -6,9 +6,14 @@
 import argparse
 import sys
 import os
-from inference import LLMInference
-from trainer import LLMTrainer
-from data_preprocessor import DataPreprocessor
+import os
+import sys
+# 使脚本可从任意目录直接运行（把项目根目录加入模块搜索路径）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from legacy.inference import LLMInference
+from legacy.trainer import LLMTrainer
+from legacy.data_preprocessor import DataPreprocessor
 from config import Config
 
 

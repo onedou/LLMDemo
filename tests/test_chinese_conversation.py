@@ -28,11 +28,11 @@ import sys
 import unittest
 from datetime import datetime, timedelta
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
-from inference import LLMInference
-from train_with_conversation import load_conversation_pairs
+from legacy.inference import LLMInference
+from legacy.train_with_conversation import load_conversation_pairs
 
 MODEL_PATH = 'models/conversation_llm_model.pth'
 VOCAB_PATH = 'models/conversation_vocab.pkl'

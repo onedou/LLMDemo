@@ -12,8 +12,8 @@ from tqdm import tqdm
 import time
 import os
 from config import Config
-from model import SimpleLLM, TransformerLM
-from data_preprocessor import DataPreprocessor
+from legacy.model import SimpleLLM, TransformerLM
+from legacy.data_preprocessor import DataPreprocessor
 
 
 class LLMTrainer:

@@ -7,9 +7,14 @@ LLM演示程序测试脚本
 import os
 import sys
 import torch
+import os
+import sys
+# 使脚本可从任意目录直接运行（把项目根目录加入模块搜索路径）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config import Config
-from data_preprocessor import DataPreprocessor
-from model import SimpleLLM
+from legacy.data_preprocessor import DataPreprocessor
+from legacy.model import SimpleLLM
 
 
 def test_data_preprocessing():
@@ -96,7 +101,7 @@ def test_training_preparation():
     """测试训练准备功能"""
     print("=== 测试训练准备 ===")
     
-    from trainer import LLMTrainer
+    from legacy.trainer import LLMTrainer
     
     # 创建训练器
     trainer = LLMTrainer()
@@ -133,7 +138,7 @@ def test_inference():
     """测试推理功能"""
     print("=== 测试推理功能 ===")
     
-    from inference import LLMInference
+    from legacy.inference import LLMInference
     
     # 创建推理器
     inference = LLMInference()

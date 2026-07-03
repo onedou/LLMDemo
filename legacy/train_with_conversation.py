@@ -8,11 +8,11 @@
 
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from trainer import LLMTrainer
-from data_preprocessor import DataPreprocessor
-from model import SimpleLLM
+from legacy.trainer import LLMTrainer
+from legacy.data_preprocessor import DataPreprocessor
+from legacy.model import SimpleLLM
 from config import Config
 
 

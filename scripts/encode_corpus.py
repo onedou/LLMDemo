@@ -19,7 +19,12 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-from bpe_tokenizer import BPETokenizer
+import os
+import sys
+# 使脚本可从任意目录直接运行（把项目根目录加入模块搜索路径）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from nova.bpe_tokenizer import BPETokenizer
 
 # uint16上限，超过说明词表选择有误
 UINT16_MAX = 65535

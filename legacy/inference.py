@@ -7,8 +7,8 @@ import re
 import torch
 import numpy as np
 from datetime import datetime
-from model import SimpleLLM
-from data_preprocessor import DataPreprocessor
+from legacy.model import SimpleLLM
+from legacy.data_preprocessor import DataPreprocessor
 from config import Config
 
 
@@ -90,8 +90,10 @@ class LLMInference:
         # 提问包含汉字时用中文回答
         is_chinese = bool(re.search(r'[一-鿿]', prompt))
 
-        # 时间类：What time is it? / what's time it is now? / 现在几点
-        if re.search(r'几点|现在时间', prompt) or (
+        # 时间类：What time is it? / 现在几点 / 现在的时间是多少
+        # "现在.{0,4}时间"容忍"现在的时间""现在北京时间"等插入语；
+        # 不用裸"时间"关键词，避免"训练要多少时间"这类时长问题误命中
+        if re.search(r'几点|现在.{0,4}时间|当前时间|时间是多少|什么时间', prompt) or (
                 re.search(r'\btime\b', p) and re.search(r'what|now|current|tell|know', p)):
             if is_chinese:
                 return now.strftime("现在是 %H:%M。")
@@ -105,12 +107,111 @@ class LLMInference:
                 return f"今天是{now.year}年{now.month}月{now.day}日，星期{weekday}。"
             return now.strftime("Today is %A, %B %d, %Y.")
 
+        # 天气类：北京天气怎么样 / 上海的天气（实时数据，查Open-Meteo免费API）
+        weather = self._weather_response(prompt, is_chinese)
+        if weather:
+            return weather
+
         # 算术类：1+1等于几 / What is 3*4 / 12除以4
         arithmetic = self._arithmetic_response(prompt, is_chinese)
         if arithmetic:
             return arithmetic
 
         return None
+
+    # WMO天气代码 -> 中文描述（Open-Meteo使用的标准代码）
+    _WEATHER_CODES = {
+        0: "晴", 1: "基本晴朗", 2: "少云", 3: "阴",
+        45: "有雾", 48: "冻雾",
+        51: "毛毛雨", 53: "毛毛雨", 55: "毛毛雨",
+        56: "冻毛毛雨", 57: "冻毛毛雨",
+        61: "小雨", 63: "中雨", 65: "大雨", 66: "冻雨", 67: "冻雨",
+        71: "小雪", 73: "中雪", 75: "大雪", 77: "米雪",
+        80: "阵雨", 81: "阵雨", 82: "强阵雨",
+        85: "阵雪", 86: "强阵雪",
+        95: "雷阵雨", 96: "雷阵雨伴冰雹", 99: "强雷阵雨伴冰雹",
+    }
+
+    # 常见外国城市中文名 -> 英文名（地理编码API的中文索引不含外国城市译名）
+    _CITY_ALIASES = {
+        '纽约': 'New York', '伦敦': 'London', '东京': 'Tokyo', '巴黎': 'Paris',
+        '首尔': 'Seoul', '洛杉矶': 'Los Angeles', '旧金山': 'San Francisco',
+        '悉尼': 'Sydney', '莫斯科': 'Moscow', '新加坡': 'Singapore',
+        '曼谷': 'Bangkok', '迪拜': 'Dubai', '柏林': 'Berlin', '罗马': 'Rome',
+    }
+
+    def _weather_response(self, prompt, is_chinese):
+        """实时天气技能：提取城市名，调用Open-Meteo（免费、无需密钥）
+
+        命中"天气/weather"关键词才处理；查询失败时给出友好提示而不是报错
+        """
+        if not re.search(r'天气|weather', prompt, re.IGNORECASE):
+            return None
+
+        # 提取城市：取"天气"前面的连续汉字/字母，剥掉常见修饰词
+        m = re.search(r'([一-鿿A-Za-z]+?)(?:市|省|县|区)?的?(?:今天|明天|现在|当前)?的?天气', prompt)
+        city = m.group(1) if m else ''
+        for word in ('请问', '查询', '查一下', '查', '今天', '明天', '现在',
+                     '当前', '想知道', '告诉我', '一下', '的'):
+            city = city.replace(word, '')
+
+        if not city:
+            if is_chinese:
+                return "你想查询哪个城市的天气呢？比如：北京天气怎么样"
+            return "Which city's weather would you like to know? e.g. 'weather in Beijing'"
+
+        try:
+            import json as _json
+            from urllib.request import urlopen
+            from urllib.parse import quote
+
+            # 同名地点很多（如"佛山"首个结果是云南一个海拔4800米的村镇），
+            # 同时搜"X"和"X市"，取人口最多的结果——用户问天气时几乎总是指大城市
+            candidates = []
+            alias = self._CITY_ALIASES.get(city)
+            if alias:
+                names = [alias]
+            elif city.endswith(('市', '省', '县', '区')):
+                names = [city]
+            else:
+                names = [city, city + '市']
+            for name in names:
+                # 英文名必须用language=en查（zh语言下英文名匹配不准）
+                lang = 'en' if name.isascii() else 'zh'
+                geo_url = ("https://geocoding-api.open-meteo.com/v1/search"
+                           f"?name={quote(name)}&count=10&language={lang}")
+                with urlopen(geo_url, timeout=6) as resp:
+                    geo = _json.loads(resp.read().decode('utf-8'))
+                candidates.extend(geo.get('results') or [])
+            if not candidates:
+                if is_chinese:
+                    return f"抱歉，我没找到“{city}”这个城市，换个名字试试？"
+                return f"Sorry, I couldn't find the city '{city}'."
+
+            loc = max(candidates, key=lambda r: r.get('population') or 0)
+            wx_url = ("https://api.open-meteo.com/v1/forecast"
+                      f"?latitude={loc['latitude']}&longitude={loc['longitude']}"
+                      "&current=temperature_2m,weather_code,wind_speed_10m"
+                      "&timezone=auto")
+            with urlopen(wx_url, timeout=6) as resp:
+                wx = _json.loads(resp.read().decode('utf-8'))
+            cur = wx['current']
+            desc = self._WEATHER_CODES.get(cur['weather_code'], '未知天气')
+            name = loc.get('name', city)
+            # 带上省份，便于用户核对是不是自己想问的那个同名城市
+            admin = loc.get('admin1', '')
+            if admin and not name.isascii() and not name.startswith(admin[:2]):
+                name = f"{admin}{name}"
+            if is_chinese:
+                return (f"{name}当前天气：{desc}，气温{cur['temperature_2m']}°C，"
+                        f"风速{cur['wind_speed_10m']}km/h。")
+            return (f"Current weather in {name}: {desc}, "
+                    f"{cur['temperature_2m']}°C, wind {cur['wind_speed_10m']} km/h.")
+        except Exception as e:
+            print(f"天气查询失败: {e}")
+            if is_chinese:
+                return "天气服务暂时连不上，请稍后再试~"
+            return "The weather service is unavailable right now, please try again later."
 
     def _arithmetic_response(self, prompt, is_chinese):
         """简单算术技能：提取"数字 运算符 数字"并计算，支持中英文表达
